@@ -1,13 +1,9 @@
 # Databricks notebook source
-# MAGIC %run "../includes/configuration"
-
-# COMMAND ----------
-
 # MAGIC %run "../includes/common_functions"
 
 # COMMAND ----------
 
-race_results_df=spark.read.parquet(f"{presentation_folder_path}/race_results")
+race_results_df=spark.table("f1_presentation.race_results")
 
 # COMMAND ----------
 
@@ -25,8 +21,10 @@ final_df=constructor_standings_df.withColumn("rank",rank().over(constructor_stan
 
 # COMMAND ----------
 
-
+merge_condition="tgt.race_year = src.race_year AND tgt.team = src.team"
+merge_delta_data("f1_presentation","constructor_standings",final_df,"race_year",merge_condition)
 
 # COMMAND ----------
 
-final_df.write.mode("overwrite").format("parquet").saveAsTable("f1_presentation.constructor_standings")
+# MAGIC %sql
+# MAGIC SELECT * FROM f1_presentation.constructor_standings WHERE race_year = 2021
