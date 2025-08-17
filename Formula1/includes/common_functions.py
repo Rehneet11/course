@@ -12,6 +12,15 @@ def add_ingestion_date(input_df):
 
 # COMMAND ----------
 
+def df_col_to_list(input_df,input_column):
+    df_list=[]
+    for record in input_df.select(input_column).collect():
+        df_list.append(record[input_column])
+
+    return df_list
+
+# COMMAND ----------
+
 def rearrange_partition_column(input_df,partition_column):
     column_list=[]
     for column_name in input_df.schema.names:
@@ -25,9 +34,16 @@ def rearrange_partition_column(input_df,partition_column):
 
 # COMMAND ----------
 
-def incremental_load(db_name,table_name,df,partition_column):
-    spark.conf.set("spark.sql.sources.partitionOverwriteMode","dynamic")
+from delta.tables import DeltaTable
+def merge_delta_data(db_name,table_name,df,partition_column,merge_condition):
+    spark.conf.set("spark.databricks.optimizer.dynamicPartitionPruning","true")
     if(spark.catalog.tableExists(f"{db_name}.{table_name}")):
-        df.write.mode("overwrite").insertInto(f"{db_name}.{table_name}")
+        deltaTable=DeltaTable.forName(spark,f"{db_name}.{table_name}")
+        deltaTable.alias("tgt").merge(
+            df.alias("src"),
+            merge_condition) \
+            .whenMatchedUpdateAll()\
+            .whenNotMatchedInsertAll()\
+            .execute()
     else:
-        df.write.partitionBy(partition_column).mode("append").format("parquet").saveAsTable(f"{db_name}.{table_name}")
+        df.write.mode("overwrite").partitionBy(f"{partition_column}").format("delta").saveAsTable(f"{db_name}.{table_name}")
