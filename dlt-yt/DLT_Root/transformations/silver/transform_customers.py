@@ -1,23 +1,22 @@
 import dlt
-from pyspark.sql.functions import col
-from pyspark.sql.types import IntegerType
+from pyspark.sql.functions import col,upper
 
 @dlt.view(
-    name="products_enriched_view"
+    name="customers_enriched_view"
 )
 def products_enriched_view():
-    df=spark.readStream.table("products_staged")
-    df=df.withColumn('price',col('price').cast(IntegerType()))
+    df=spark.readStream.table("customers_staged");
+    df=df.withColumn('customer_name',upper(col('customer_name')))
     return df
 
 dlt.create_streaming_table(
-    name="transformed_products"
+    name="transformed_customers"
 )
 
 dlt.create_auto_cdc_flow(
-    target = "transformed_products",
-    source = "products_enriched_view",
-    keys = ["product_id"],
+    target = "transformed_customers",
+    source = "customers_enriched_view",
+    keys = ["customer_id"],
     sequence_by = "last_updated",
     ignore_null_updates = False,
     apply_as_deletes = None,
